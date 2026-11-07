@@ -4,45 +4,71 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>安全验证</title>
+<!-- 引入官方 Turnstile 脚本 -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
-  html,body{margin:0;height:100%;background:#0b0f14;overflow:hidden;
-    font-family:system-ui,-apple-system,"PingFang SC",sans-serif;
-    display:flex;align-items:center;justify-content:center;color:#e6edf3}
-  .card{text-align:center;padding:32px;max-width:420px}
-  .spin{width:56px;height:56px;margin:0 auto 24px;border-radius:50%;
-    border:4px solid #1f2937;border-top-color:#3b82f6;animation:s 1s linear infinite}
-  @keyframes s{to{transform:rotate(360deg)}}
-  h1{font-size:20px;font-weight:600;margin:0 0 10px}
-  p{font-size:14px;color:#8b949e;margin:0 0 26px;line-height:1.6}
-  button{padding:14px 44px;border:0;border-radius:10px;background:#3b82f6;
-    color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit}
-  button:active{transform:scale(.97)}
-  #v{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
-    background:#000;display:none}
-  #ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  html, body { margin: 0; height: 100%; background: #0b0f14; overflow: hidden; font-family: system-ui, -apple-system, "PingFang SC", sans-serif; display: flex; align-items: center; justify-content: center; color: #e6edf3; }
+  #ui { text-align: center; padding: 24px; transition: opacity 0.3s; }
+  h1 { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
+  p { font-size: 14px; color: #8b949e; margin: 0 0 22px; }
+  #v { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; display: none; z-index: 1; }
+  
+  /* 兜底按钮 */
+  #tip { position: fixed; left: 50%; bottom: 15%; transform: translateX(-50%); padding: 14px 32px; border-radius: 999px; background: #fff; color: #000; font-size: 16px; font-weight: 700; cursor: pointer; display: none; z-index: 10; border: 0; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
 </style>
 </head>
 <body>
 
-<video id="v" src="rickroll.mp4" playsinline loop preload="auto"></video>
+<video id="v" src="../rickroll.mp4" playsinline loop preload="auto"></video>
 
 <div id="ui">
-  <div class="card">
-    <div class="spin"></div>
-    <h1>正在验证您是否为真人</h1>
-    <p>请点击下方按钮以继续访问</p>
-    <button id="go">我不是机器人</button>
-  </div>
+  <h1>请完成安全验证以继续</h1>
+  <p>此步骤用于确认您是真人</p>
+  <!-- Turnstile 组件容器 -->
+  <div class="cf-turnstile" 
+       data-sitekey="1x00000000000000000000AA" 
+       data-theme="dark" 
+       data-callback="onTurnstileSuccess"></div>
 </div>
 
+<button id="tip">🔊 点此开启声音</button>
+
 <script>
-  document.getElementById('go').addEventListener('click', function () {
-    var v = document.getElementById('v');
-    document.getElementById('ui').style.display = 'none';
+  var v = document.getElementById('v');
+  var ui = document.getElementById('ui');
+  var tip = document.getElementById('tip');
+
+  // Turnstile 验证成功的回调
+  window.onTurnstileSuccess = function (token) {
+    // 隐藏验证 UI
+    ui.style.opacity = '0';
+    setTimeout(function() { ui.style.display = 'none'; }, 300);
+    
+    // 显示视频
     v.style.display = 'block';
+
+    // 尝试带声音播放
     v.muted = false;
     v.volume = 1;
-    v.play().catch(function () { v.muted = true; v.play(); });
+    v.play().then(function () {
+      // 播放成功（说明浏览器认可了这次点击手势）
+      tip.style.display = 'none';
+    }).catch(function () {
+      // 播放失败（跨域 iframe 手势没传递过来，被拦截了）
+      // 立即回退到静音播放
+      v.muted = true;
+      v.play().catch(function(){});
+      // 显示兜底按钮，让用户真正点一下父页面
+      tip.style.display = 'block';
+    });
+  };
+
+  // 兜底按钮点击事件
+  tip.addEventListener('click', function () {
+    v.muted = false;
+    v.volume = 1;
+    v.play().catch(function(){});
+    tip.style.display = 'none';
   });
 </script>
 
