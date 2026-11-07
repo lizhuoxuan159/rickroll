@@ -7,14 +7,67 @@
 <!-- 引入官方 Turnstile 脚本 -->
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <style>
-  html, body { margin: 0; height: 100%; background: #0b0f14; overflow: hidden; font-family: system-ui, -apple-system, "PingFang SC", sans-serif; display: flex; align-items: center; justify-content: center; color: #e6edf3; }
-  #ui { text-align: center; padding: 24px; transition: opacity 0.3s; }
-  h1 { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
-  p { font-size: 14px; color: #8b949e; margin: 0 0 22px; }
-  #v { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; display: none; z-index: 1; }
+  html, body { 
+    margin: 0; 
+    height: 100%; 
+    background: #0b0f14; 
+    overflow: hidden; 
+    font-family: system-ui, -apple-system, "PingFang SC", sans-serif; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: #e6edf3; 
+  }
   
-  /* 兜底按钮 */
-  #tip { position: fixed; left: 50%; bottom: 15%; transform: translateX(-50%); padding: 14px 32px; border-radius: 999px; background: #fff; color: #000; font-size: 16px; font-weight: 700; cursor: pointer; display: none; z-index: 10; border: 0; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+  #ui { 
+    text-align: center; 
+    padding: 24px; 
+    transition: opacity 0.3s; 
+  }
+  
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+  p { font-size: 14px; color: #8b949e; margin: 0 0 24px; }
+  
+  /* 按钮的基础样式（未验证时的灰色状态） */
+  #submit-btn {
+    margin-top: 24px;
+    padding: 14px 44px;
+    font-size: 16px;
+    font-weight: 600;
+    border: 0;
+    border-radius: 8px;
+    cursor: not-allowed;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    
+    /* 灰色状态 */
+    background: #21262d;
+    color: #8b949e;
+  }
+  
+  /* 验证通过后的绿色激活状态 */
+  #submit-btn.active {
+    background: #238636;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(35, 134, 54, 0.4);
+  }
+  
+  #submit-btn.active:active {
+    transform: scale(0.97);
+  }
+
+  /* 视频播放器 */
+  #v { 
+    position: fixed; 
+    inset: 0; 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    background: #000; 
+    display: none; 
+    z-index: 1; 
+  }
 </style>
 </head>
 <body>
@@ -24,51 +77,44 @@
 <div id="ui">
   <h1>请完成安全验证以继续</h1>
   <p>此步骤用于确认您是真人</p>
+  
   <!-- Turnstile 组件容器 -->
   <div class="cf-turnstile" 
        data-sitekey="0x4AAAAAAF3hrCGqfG0VqLMu" 
        data-theme="dark" 
        data-callback="onTurnstileSuccess"></div>
+       
+  <!-- 新增的确认按钮，初始为禁用状态 -->
+  <button id="submit-btn" disabled>我已完成人机验证</button>
 </div>
-
-<button id="tip">🔊 点此开启声音</button>
 
 <script>
   var v = document.getElementById('v');
   var ui = document.getElementById('ui');
-  var tip = document.getElementById('tip');
+  var btn = document.getElementById('submit-btn');
 
-  // Turnstile 验证成功的回调
+  // 1. Turnstile 验证成功的回调
   window.onTurnstileSuccess = function (token) {
+    // 验证通过：解锁按钮，变绿色
+    btn.disabled = false;
+    btn.classList.add('active');
+  };
+
+  // 2. 用户点击绿色的“我已完成”按钮
+  btn.addEventListener('click', function () {
     // 隐藏验证 UI
     ui.style.opacity = '0';
     setTimeout(function() { ui.style.display = 'none'; }, 300);
     
-    // 显示视频
+    // 显示视频并直接带声音播放
     v.style.display = 'block';
-
-    // 尝试带声音播放
     v.muted = false;
     v.volume = 1;
-    v.play().then(function () {
-      // 播放成功（说明浏览器认可了这次点击手势）
-      tip.style.display = 'none';
-    }).catch(function () {
-      // 播放失败（跨域 iframe 手势没传递过来，被拦截了）
-      // 立即回退到静音播放
+    v.play().catch(function(err) {
+      // 极少数情况下（如手机静音键物理开启），如果播放失败则静音播放
       v.muted = true;
       v.play().catch(function(){});
-      // 显示兜底按钮，让用户真正点一下父页面
-      tip.style.display = 'block';
     });
-  };
-
-  // 兜底按钮点击事件
-  tip.addEventListener('click', function () {
-    v.muted = false;
-    v.volume = 1;
-    v.play().catch(function(){});
-    tip.style.display = 'none';
   });
 </script>
 
